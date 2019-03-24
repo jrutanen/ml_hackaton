@@ -2,31 +2,66 @@ from PIL import Image, ImageFilter
 from os import listdir
 from os.path import isfile, join
 from random import shuffle
+from enum import Enum
 import shutil
 import os, sys
 
 
+class Data(Enum):
+    LABEL = 0
+    NAME = 1
+    FOLDER = 2
+    IMAGES = 3
+
 def image_center(image):
+    """
+    Calculate center coordinates of an image.
+
+    :param image: picture
+    :returns: returns a tuple with x and y coordinate of the image center
+    """
     width, height = image.size
     return (width/2, height/2)
 
 
-def expand_image_canvas(original_image):
-    width, height = original_image.size
+def expand_image_canvas(image):
+    """
+    Expands the image canvas so that the image will be square. Shorter
+    side of the image will be expanded to match the longer side.
+
+    :param image: picture
+    :returns: returns an square image
+    """
+    width, height = image.size
     image_size = max(width, height)
-    expanded_image = Image.new(original_image.mode, (image_size, image_size))
-    expanded_image.paste(original_image, (0, 0, width, height))
+    expanded_image = Image.new(image.mode, (image_size, image_size))
+    expanded_image.paste(image, (0, 0, width, height))
     return expanded_image
 
 
-def standardize_image(image_path, output_path):
+def standardize_image(image_path, output_path, new_size):
+    """
+    Resizes image to the given size. Image is first converted to
+    a square image and then resized
+
+    :param image_path: picture to be resized
+    :param output_path: location where the resized picture is to be saved
+    :param new_size: x and y lenghts of the resized image
+    :returns: nothing
+    """
     im = Image.open(image_path)
     square_im = crop_image(im)#expand_image_canvas(im)
-    square_im.thumbnail(size, Image.ANTIALIAS)
+    square_im.thumbnail(new_size, Image.ANTIALIAS)
     square_im.save(output_path, "JPEG")
 
 
 def crop_image(image):
+    """
+    Crops the image to be square using the shortest side as the size.
+
+    :param image: picture to be cropped
+    :returns: cropped image
+    """
     box = []
     width, height = image.size
     box_size = min(width, height)
@@ -34,43 +69,38 @@ def crop_image(image):
     center = image_center(image)
     image_center_x = center[0]
     image_center_y = center[1]
-    # Left coordinate and Upper coordinate
+    #left and upper coordinates
     box.append(image_center_x - offset)
     box.append(image_center_y - offset)
-    # Right coordinate and Lower coordinate
+    #right and lower coordinates
     box.append(image_center_x + offset)
     box.append(image_center_y + offset)
     return image.crop(box)
 
-
+#get raw images for different image classes
 hotdogs = [f for f in listdir("hotdog_pics") if isfile(join("hotdog_pics", f))]
 non_hotdogs = [f for f in listdir("other_pics") if isfile(join("other_pics", f))]
 
-image_folders = [hotdogs, non_hotdogs]
+#create tuples for the image classes (label, name, folder, raw images)
+hotdog = (0, "hotdog", "hotdog_pics", hotdogs)
+non_hotdog = (1, "non_hotdog", "other_pics", non_hotdogs)
 
-i = 0
+image_data = [hotdog, non_hotdog]
+
+#loop through all images and standardize them to size 100 x 100 pixels
+#standardized images are saved in standard_pic folder
 size = 100, 100
-for f in hotdogs:
-    outfile = "standard_pics/hotdog_" + str(i) + ".jpg"
-    image_path = "hotdog_pics/" + f
-    i += 1
-    try:
-        standardize_image(image_path, outfile)
-    except IOError:
-        print("error while modifying picture. Image deleted")
-        os.remove(outfile)
-
-
-i = 0
-for f in non_hotdogs:
-    outfile = "standard_pics/non_hotdog_" + str(i) + ".jpg"
-    image_path = "other_pics/" + f
-    i += 1
-    try:
-        standardize_image(image_path, outfile)
-    except IOError:
-        print("error while modifying picture. Image deleted")
-        os.remove(outfile)
+for image_class in image_data:
+    i = 0
+    for image in image_class[Data.IMAGES.value]:
+        outfile = "standard_pics/" + image_class[Data.NAME.value] + "_" + str(i) + ".jpg"
+        image_path = image_class[Data.FOLDER.value] + "/" + image
+        i += 1
+        try:
+            standardize_image(image_path, outfile, size)
+        except IOError:
+            print("error while modifying picture. Image deleted")
+            os.remove(outfile)
 
 #get list of standardized images
 images = [f for f in listdir("standard_pics") if isfile(join("standard_pics", f))]
@@ -112,4 +142,5 @@ for image_name in test_images:
     shutil.copyfile("standard_pics/" + image_name, "test_set/images/" + image_name)
 #close open file
 file.close()
+
 
