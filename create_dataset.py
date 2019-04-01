@@ -4,7 +4,7 @@ from os.path import isfile, join
 from random import shuffle
 from enum import Enum
 import shutil
-import os, sys
+import os
 
 
 class Data(Enum):
@@ -55,6 +55,40 @@ def standardize_image(image_path, output_path, new_size):
     square_im.save(output_path, "JPEG")
 
 
+def rotate_image_90(image_path, output_path, new_size):
+    """
+    Rotates the image 90 degrees and resizes image to the given size. Image is first converted to
+    a square image and rotated and resized
+
+    :param image_path: picture to be resized
+    :param output_path: location where the resized picture is to be saved
+    :param new_size: x and y lenghts of the resized image
+    :returns: nothing
+    """
+    im = Image.open(image_path)
+    square_im = crop_image(im)
+    square_im = square_im.rotate(90)
+    square_im.thumbnail(new_size, Image.ANTIALIAS)
+    square_im.save(output_path, "JPEG")
+
+
+def rotate_image(image_path, output_path, new_size, degrees):
+    """
+    Rotates the image 45 degrees and resizes image to the given size. Image is first rotated
+    and then converted to a square image and resized
+
+    :param image_path: picture to be resized
+    :param output_path: location where the resized picture is to be saved
+    :param new_size: x and y lenghts of the resized image
+    :returns: nothing
+    """
+    im = Image.open(image_path)
+    im = im.rotate(degrees)
+    square_im = crop_image(im)
+    square_im.thumbnail(new_size, Image.ANTIALIAS)
+    square_im.save(output_path, "JPEG")
+
+
 def crop_image(image):
     """
     Crops the image to be square using the shortest side as the size.
@@ -89,15 +123,19 @@ image_data = [hotdog, non_hotdog]
 
 #loop through all images and standardize them to size 100 x 100 pixels
 #standardized images are saved in standard_pic folder
-size = 100, 100
+size = 224, 224
 for image_class in image_data:
     i = 0
     for image in image_class[Data.IMAGES.value]:
         outfile = "standard_pics/" + image_class[Data.NAME.value] + "_" + str(i) + ".jpg"
+        rotated_90_outfile = "standard_pics/" + image_class[Data.NAME.value] + "_rot90_" + str(i) + ".jpg"
+        rotated_45_outfile = "standard_pics/" + image_class[Data.NAME.value] + "_rot45_" + str(i) + ".jpg"
         image_path = image_class[Data.FOLDER.value] + "/" + image
         i += 1
         try:
             standardize_image(image_path, outfile, size)
+            rotate_image_90(image_path, rotated_90_outfile, size)
+            rotate_image(image_path, rotated_45_outfile, size, 45)
         except IOError:
             print("error while modifying picture. Image deleted")
             os.remove(outfile)
